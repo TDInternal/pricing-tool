@@ -1,0 +1,789 @@
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Plus, Trash2, Settings, Copy, Eye, EyeOff, Calculator, DollarSign, X, CheckCircle } from 'lucide-react';
+
+// To improve maintainability, product pricing and implementation cost data are moved outside the component.
+// This makes it easier to update pricing without touching the component logic.
+
+const productPrices = {
+  'Study Abroad': { '0 - 100': 8700, '101 - 200': 11872, '201 - 300': 15044, '301 - 400': 18217, '401 - 500': 21389, '501 - 600': 24561, '601 - 700': 27733, '701 - 800': 30906, '800 - 900': 34078, '901 - 1,000': 37250, '1,001 - 1,100': 42250, '1,101 - 1,250': 43500, '1,251 - 1,500': 47250, '1,501 - 2,000': 52250, '2,001 - 3,500': 56000, '3,501 - 6,000': 62250, '6,001 - 11,000+': 72250 },
+  'ISSS': { '0 - 100': 10500, '101 - 200': 14861, '201 - 300': 19222, '301 - 400': 23583, '401 - 500': 27944, '501 - 600': 32306, '601 - 700': 36667, '701 - 800': 41028, '800 - 900': 45389, '901 - 1,000': 49750, '1,001 - 1,100': 54750, '1,101 - 1,250': 56000, '1,251 - 1,500': 59750, '1,501 - 2,000': 64750, '2,001 - 3,500': 68500, '3,501 - 6,000': 74750, '6,001 - 11,000+': 84750 },
+  'Enterprise Travel Registry': { '0 - 100': 6100, '101 - 200': 8061, '201 - 300': 10022, '301 - 400': 11983, '401 - 500': 13944, '501 - 600': 15906, '601 - 700': 17867, '701 - 800': 19828, '800 - 900': 21789, '901 - 1,000': 23750, '1,001 - 1,100': 28750, '1,101 - 1,250': 30000, '1,251 - 1,500': 33750, '1,501 - 2,000': 38750, '2,001 - 3,500': 42500, '3,501 - 6,000': 48750, '6,001 - 11,000+': 58750 },
+  'AlertTraveler': { '0 - 100': 4750, '101 - 200': 5442, '201 - 300': 6133, '301 - 400': 6825, '401 - 500': 7517, '501 - 600': 8208, '601 - 700': 8900, '701 - 800': 9592, '800 - 900': 10283, '901 - 1,000': 10975, '1,001 - 1,100': 15975, '1,101 - 1,250': 17225, '1,251 - 1,500': 20975, '1,501 - 2,000': 25975, '2,001 - 3,500': 29725, '3,501 - 6,000': 35975, '6,001 - 11,000+': 45975 },
+  'Engage for SA': { '0 - 100': 2871, '101 - 200': 3918, '201 - 300': 4965, '301 - 400': 6012, '401 - 500': 7058, '501 - 600': 8105, '601 - 700': 9152, '701 - 800': 10199, '800 - 900': 11246, '901 - 1,000': 12293, '1,001 - 1,100': 13943, '1,101 - 1,250': 14355, '1,251 - 1,500': 15593, '1,501 - 2,000': 17243, '2,001 - 3,500': 18480, '3,501 - 6,000': 20543, '6,001 - 11,000+': 23843 },
+  'Engage for ISSS': { '0 - 100': 3465, '101 - 200': 4904, '201 - 300': 6343, '301 - 400': 7782, '401 - 500': 9222, '501 - 600': 10661, '601 - 700': 12100, '701 - 800': 13539, '800 - 900': 14978, '901 - 1,000': 16418, '1,001 - 1,100': 18068, '1,101 - 1,250': 18480, '1,251 - 1,500': 19718, '1,501 - 2,000': 21368, '2,001 - 3,500': 22605, '3,501 - 6,000': 24668, '6,001 - 11,000+': 27968 },
+  'Agreements': { all: 9500 },
+  'Dashboards': { all: 5000 },
+  'PGI': { all: 1000 }
+};
+
+const implementationCosts = {
+  'Study Abroad': { '0 - 100': 12000, '101 - 200': 12000, '201 - 300': 12000, '301 - 400': 12000, '401 - 500': 12000, '501 - 600': 13500, '601 - 700': 13500, '701 - 800': 13500, '800 - 900': 13500, '901 - 1,000': 13500, '1,001 - 1,100': 15000, '1,101 - 1,250': 15000, '1,251 - 1,500': 15000, '1,501 - 2,000': 15000, '2,001 - 3,500': 15000, '3,501 - 6,000': 15000, '6,001 - 11,000+': 15000 },
+  'ISSS': { all: 21750 },
+  'AlertTraveler': { all: 1500 },
+  'Engage for SA': { all: 1500 },
+  'Engage for ISSS': { all: 1500 },
+  'Enterprise Travel Registry': { all: 9000 },
+  'Dashboards': { all: 5000 },
+  'Agreements': { all: 6000 },
+  'PGI': { all: 1000 }
+};
+
+const availableProducts = Object.keys(productPrices);
+const bandOptions = [
+  '0 - 100', '101 - 200', '201 - 300', '301 - 400', '401 - 500', '501 - 600', '601 - 700', 
+  '701 - 800', '800 - 900', '901 - 1,000', '1,001 - 1,100', '1,101 - 1,250', '1,251 - 1,500', 
+  '1,501 - 2,000', '2,001 - 3,500', '3,501 - 6,000', '6,001 - 11,000+', '-'
+];
+
+const getProductPrice = (productName, band) => {
+    if (productPrices[productName]?.all) return productPrices[productName].all;
+    return productPrices[productName]?.[band] || 0;
+};
+
+const getImplementationCost = (productName, band) => {
+    if (productName === 'Study Abroad') return implementationCosts['Study Abroad'][band] || 15000;
+    return implementationCosts[productName]?.all || 0;
+};
+
+const Notification = ({ message, type, onDismiss }) => {
+  if (!message) return null;
+
+  const baseStyle = "fixed top-5 right-5 flex items-center px-6 py-3 rounded-lg shadow-lg text-white transition-all duration-300 transform animate-slide-in-right";
+  const typeStyles = {
+    success: "bg-green-500",
+    error: "bg-red-500",
+  };
+
+  return (
+    <div className={`${baseStyle} ${typeStyles[type]}`}>
+      <CheckCircle className="mr-3" size={20} />
+      <span className="font-medium">{message}</span>
+      <button onClick={onDismiss} className="ml-4 p-1 rounded-full hover:bg-white/20 transition-colors">
+        <X size={18} />
+      </button>
+    </div>
+  );
+};
+
+
+const PricingGenerator = () => {
+  const [products, setProducts] = useState([
+    { 
+      id: 1,
+      name: 'Study Abroad', 
+      band: '201 - 300', 
+      listPrice: 15044, 
+      discount: { type: 'percentage', value: 20 }, 
+      hasImplementation: true,
+      showUnlimited: false,
+      implementationCost: 12000,
+      implementationDiscount: { type: 'percentage', value: 10 },
+      waiveYear1: false,
+      waiveImplementation: false
+    }
+  ]);
+  const [term, setTerm] = useState(5);
+  const [escalator, setEscalator] = useState(3);
+  const [validThrough, setValidThrough] = useState('2025-12-31');
+  const [showConfig, setShowConfig] = useState(false);
+  const [notification, setNotification] = useState({ message: '', type: 'success' });
+
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: 'success' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+  };
+
+  const formattedDate = useMemo(() => {
+    try {
+      const date = new Date(validThrough + 'T00:00:00');
+      const day = date.getDate();
+      const month = date.toLocaleDateString('en-US', { month: 'long' });
+      const year = date.getFullYear();
+      
+      const getOrdinal = (n) => {
+        if (n >= 11 && n <= 13) return n + "th";
+        switch (n % 10) {
+          case 1: return n + "st";
+          case 2: return n + "nd";
+          case 3: return n + "rd";
+          default: return n + "th";
+        }
+      };
+      
+      return `${month} ${getOrdinal(day)}, ${year}`;
+    } catch (error) {
+      return validThrough;
+    }
+  }, [validThrough]);
+
+  const copyToPowerPoint = useCallback(() => {
+    try {
+      const pricingTable = document.querySelector('#pricing-table-for-copy');
+      if (!pricingTable) {
+        showNotification('Copy failed: Pricing table not found.', 'error');
+        return;
+      }
+      const range = document.createRange();
+      range.selectNode(pricingTable);
+      
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      const successful = document.execCommand('copy');
+      selection.removeAllRanges();
+      
+      if (successful) {
+        showNotification('✅ Pricing table copied successfully!');
+      } else {
+        showNotification('Copy failed. Please try selecting the table manually.', 'error');
+      }
+    } catch (err) {
+      showNotification('Copy failed. An error occurred.', 'error');
+    }
+  }, []);
+
+  const updateProduct = (index, field, value) => {
+    const newProducts = [...products];
+    const productToUpdate = { ...newProducts[index] };
+
+    if (field === 'discount' || field === 'implementationDiscount') {
+      productToUpdate[field] = value;
+    } else if (field === 'band' || field === 'name') {
+      productToUpdate[field] = value;
+      const newName = field === 'name' ? value : productToUpdate.name;
+      const newBand = field === 'band' ? value : productToUpdate.band;
+      productToUpdate.listPrice = getProductPrice(newName, newBand);
+      productToUpdate.implementationCost = getImplementationCost(newName, newBand);
+    } else {
+      productToUpdate[field] = value;
+    }
+    newProducts[index] = productToUpdate;
+    setProducts(newProducts);
+  };
+
+  const addProduct = () => {
+    setProducts([...products, { 
+      id: Date.now(),
+      name: 'Study Abroad', 
+      band: '201 - 300', 
+      listPrice: 15044, 
+      discount: { type: 'percentage', value: 0 }, 
+      hasImplementation: false,
+      showUnlimited: false,
+      implementationCost: 12000,
+      implementationDiscount: { type: 'percentage', value: 0 },
+      waiveYear1: false,
+      waiveImplementation: false
+    }]);
+  };
+
+  const removeProduct = (index) => {
+    if (products.length > 1) setProducts(products.filter((_, i) => i !== index));
+  };
+
+  const calculateYearlyPrice = (basePrice, year, escalatorRate) => Math.round(basePrice * Math.pow(1 + escalatorRate / 100, year - 1));
+
+  const calculateDiscountedPrice = (price, discount) => {
+    const discountValue = discount.value === '' ? 0 : (typeof discount.value === 'string' ? parseInt(discount.value, 10) || 0 : discount.value);
+    if (discount.type === 'percentage') return price - Math.round(price * discountValue / 100);
+    return price - discountValue;
+  };
+  
+  const formatCurrency = (amount) => '$' + amount.toLocaleString();
+
+  const formatDiscount = (discount) => {
+    const discountValue = discount.value === '' ? 0 : (typeof discount.value === 'string' ? parseInt(discount.value, 10) || 0 : discount.value);
+    if (discountValue === 0) return '-';
+    if (discount.type === 'percentage') return discountValue + '%';
+    return formatCurrency(discountValue);
+  };
+
+  const calculateTotalSavings = useCallback(() => {
+    let totalListPriceWithEscalator = 0;
+    let totalDiscountedPrice = 0;
+
+    products.forEach(product => {
+      for (let year = 1; year <= term; year++) {
+        const yearlyListPrice = calculateYearlyPrice(product.listPrice, year, escalator);
+        totalListPriceWithEscalator += yearlyListPrice;
+        
+        const discountedPrice = calculateDiscountedPrice(yearlyListPrice, product.discount);
+        const finalPrice = product.waiveYear1 && year === 1 ? 0 : discountedPrice;
+        totalDiscountedPrice += finalPrice;
+      }
+
+      if (product.hasImplementation) {
+        totalListPriceWithEscalator += product.implementationCost;
+        const implementationFinalCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+        totalDiscountedPrice += implementationFinalCost;
+      }
+    });
+
+    return { totalListPriceWithEscalator, totalDiscountedPrice, totalSavings: totalListPriceWithEscalator - totalDiscountedPrice };
+  }, [products, term, escalator]);
+
+  const calculateAverageDiscount = useCallback(() => {
+    if (products.length === 0) return 0;
+    
+    let totalListPriceValue = 0;
+    let totalDiscountValue = 0;
+    
+    products.forEach(product => {
+      let waivedYear1Discount = 0;
+      for (let year = 1; year <= term; year++) {
+        const yearlyPrice = calculateYearlyPrice(product.listPrice, year, escalator);
+        totalListPriceValue += yearlyPrice;
+        
+        const discountAmount = product.discount.type === 'percentage' 
+          ? Math.round(yearlyPrice * (parseInt(product.discount.value, 10) || 0) / 100)
+          : (parseInt(product.discount.value, 10) || 0);
+        totalDiscountValue += discountAmount;
+
+        if (product.waiveYear1 && year === 1) {
+            waivedYear1Discount = yearlyPrice - discountAmount;
+        }
+      }
+      totalDiscountValue += waivedYear1Discount;
+      
+      if (product.hasImplementation) {
+        const implCost = product.implementationCost;
+        totalListPriceValue += implCost;
+        
+        const implDiscountAmount = product.implementationDiscount.type === 'percentage'
+          ? Math.round(implCost * (parseInt(product.implementationDiscount.value, 10) || 0) / 100)
+          : (parseInt(product.implementationDiscount.value, 10) || 0);
+        totalDiscountValue += implDiscountAmount;
+        
+        if (product.waiveImplementation) {
+          totalDiscountValue += (implCost - implDiscountAmount);
+        }
+      }
+    });
+    
+    if (totalListPriceValue === 0) return 0;
+    return Math.round((totalDiscountValue / totalListPriceValue) * 100);
+  }, [products, term, escalator]);
+
+  const totals = useMemo(() => calculateTotalSavings(), [calculateTotalSavings]);
+  const averageDiscount = useMemo(() => calculateAverageDiscount(), [calculateAverageDiscount]);
+
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Notification message={notification.message} type={notification.type} onDismiss={() => setNotification({ message: '', type: 'success' })} />
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Calculator className="w-8 h-8" />
+                <h1 className="text-2xl font-bold">Terra Dotta Pricing Generator</h1>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={addProduct} 
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105"
+                >
+                  <Plus size={18} />
+                  Add Product
+                </button>
+                <button 
+                  onClick={() => setShowConfig(!showConfig)} 
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105"
+                >
+                  {showConfig ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showConfig ? 'Hide' : 'Show'} Settings
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Settings Panel */}
+          {showConfig && (
+            <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Contract Term</label>
+                  <select 
+                    value={term} 
+                    onChange={(e) => setTerm(parseInt(e.target.value))} 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10].map(y => (
+                      <option key={y} value={y}>{y} Year{y > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Annual Escalator (%)</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="20" 
+                    value={escalator} 
+                    onChange={(e) => setEscalator(parseInt(e.target.value) || 0)} 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">Valid Through</label>
+                  <input 
+                    type="date" 
+                    value={validThrough} 
+                    onChange={(e) => setValidThrough(e.target.value)} 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                  <div className="text-sm text-slate-600">
+                    Will display as: {formattedDate}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="p-6">
+            <div className="bg-white">
+              
+              <h2 className="text-3xl font-bold text-center mb-8 text-slate-900 bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                Terra Dotta Pricing
+              </h2>
+
+              {/* Product Configuration Cards */}
+              <div className="space-y-6 mb-10">
+                {products.map((product, index) => (
+                  <div key={product.id} className="border border-slate-200 rounded-xl p-6 bg-gradient-to-r from-white to-slate-50 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        Product Configuration
+                      </h3>
+                      {products.length > 1 && (
+                        <button 
+                          onClick={() => removeProduct(index)} 
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Main inputs grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+                        <div className="lg:col-span-1 space-y-2">
+                            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Product</label>
+                            <select 
+                            value={product.name} 
+                            onChange={(e) => updateProduct(index, 'name', e.target.value)} 
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            >
+                            {availableProducts.map(p => (<option key={p} value={p}>{p}</option>))}
+                            </select>
+                        </div>
+                        <div className="lg:col-span-1 space-y-2">
+                            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Band</label>
+                            <select 
+                            value={product.band} 
+                            onChange={(e) => updateProduct(index, 'band', e.target.value)} 
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            >
+                            {bandOptions.map(b => (<option key={b} value={b}>{b}</option>))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">List Price</label>
+                            <input 
+                            type="number" 
+                            value={product.listPrice} 
+                            onChange={(e) => updateProduct(index, 'listPrice', parseInt(e.target.value) || 0)} 
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Discount</label>
+                            <div className="flex rounded-lg overflow-hidden border border-slate-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                            <select 
+                                value={product.discount.type} 
+                                onChange={(e) => updateProduct(index, 'discount', {...product.discount, type: e.target.value})} 
+                                className="border-0 px-2 py-2 text-sm w-14 bg-slate-100 focus:ring-0"
+                            >
+                                <option value="percentage">%</option>
+                                <option value="dollar">$</option>
+                            </select>
+                            <input 
+                                type="number" 
+                                value={product.discount.value} 
+                                onChange={(e) => updateProduct(index, 'discount', {...product.discount, value: e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0})} 
+                                className="border-0 px-3 py-2 text-sm flex-1 focus:ring-0 bg-white"
+                            />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Toggles Section */}
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                         <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+                            <label className="flex items-center cursor-pointer space-x-2">
+                                <input 
+                                type="checkbox" 
+                                checked={product.showUnlimited} 
+                                onChange={(e) => updateProduct(index, 'showUnlimited', e.target.checked)} 
+                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-slate-700">Unlimited</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer space-x-2">
+                                <input 
+                                type="checkbox" 
+                                checked={product.waiveYear1} 
+                                onChange={(e) => updateProduct(index, 'waiveYear1', e.target.checked)} 
+                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-slate-700">Waive Year 1</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer space-x-2">
+                                <input 
+                                type="checkbox" 
+                                checked={product.hasImplementation} 
+                                onChange={(e) => updateProduct(index, 'hasImplementation', e.target.checked)} 
+                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-slate-700">Include Implementation</span>
+                            </label>
+                         </div>
+                    </div>
+
+
+                    {/* Implementation Sub-form */}
+                    {product.hasImplementation && (
+                    <div className="mt-4 pt-4 border-t border-dashed border-blue-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50/50 rounded-lg">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-blue-700 uppercase tracking-wide">Implementation Cost</label>
+                            <input 
+                            type="number" 
+                            value={product.implementationCost} 
+                            onChange={(e) => updateProduct(index, 'implementationCost', parseInt(e.target.value) || 0)} 
+                            className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-blue-700 uppercase tracking-wide">Implementation Discount</label>
+                            <div className="flex rounded-lg overflow-hidden border border-blue-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                            <select 
+                                value={product.implementationDiscount.type} 
+                                onChange={(e) => updateProduct(index, 'implementationDiscount', {...product.implementationDiscount, type: e.target.value})} 
+                                className="border-0 px-2 py-2 text-sm w-14 bg-blue-100 focus:ring-0"
+                            >
+                                <option value="percentage">%</option>
+                                <option value="dollar">$</option>
+                            </select>
+                            <input 
+                                type="number" 
+                                value={product.implementationDiscount.value} 
+                                onChange={(e) => updateProduct(index, 'implementationDiscount', {...product.implementationDiscount, value: e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0})} 
+                                className="border-0 px-3 py-2 text-sm flex-1 focus:ring-0 bg-white"
+                            />
+                            </div>
+                        </div>
+                        <div className="space-y-2 flex items-end">
+                             <label className="flex items-center cursor-pointer space-x-2 pb-2">
+                                <input 
+                                type="checkbox" 
+                                checked={product.waiveImplementation} 
+                                onChange={(e) => updateProduct(index, 'waiveImplementation', e.target.checked)} 
+                                className="w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-blue-700">Waive Implementation</span>
+                            </label>
+                        </div>
+                        </div>
+                    </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* This is the invisible table that gets copied */}
+              <div id="pricing-table-for-copy" style={{position: 'absolute', left: '-9999px', top: 'auto'}}>
+                <table style={{borderCollapse: 'collapse', width: '100%', fontFamily: 'sans-serif', fontSize: '11pt'}}>
+                    <thead>
+                        <tr>
+                            <td colSpan={4 + term + 1} style={{padding: '8px', backgroundColor: '#f0f0f0', border: '1px solid #cccccc', fontWeight: 'bold'}}>
+                                Valid through {formattedDate} with a {escalator}% Annual Escalator
+                            </td>
+                        </tr>
+                        <tr style={{backgroundColor: '#00aeef', color: 'white', fontWeight: 'bold', textAlign: 'center'}}>
+                            <th style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'left'}}>Solution</th>
+                            <th style={{border: '1px solid #cccccc', padding: '8px'}}>Band</th>
+                            <th style={{border: '1px solid #cccccc', padding: '8px'}}>List Price</th>
+                            <th style={{border: '1px solid #cccccc', padding: '8px'}}>Discount</th>
+                            {Array.from({length: term}, (_, i) => (
+                                <th key={i} style={{border: '1px solid #cccccc', padding: '8px'}}>Year {i + 1}</th>
+                            ))}
+                            <th style={{border: '1px solid #cccccc', padding: '8px', backgroundColor: '#f57922'}}>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {products.map((product, productIndex) => {
+                        const yearlyPrices = Array.from({length: term}, (_, i) => {
+                            const yearlyPrice = calculateYearlyPrice(product.listPrice, i + 1, escalator);
+                            return calculateDiscountedPrice(yearlyPrice, product.discount);
+                        });
+                        const productTotal = yearlyPrices.reduce((sum, price, i) => sum + (product.waiveYear1 && i === 0 ? 0 : price), 0);
+                        const rowBg = productIndex % 2 === 0 ? '#f8f8f8' : '#ffffff';
+                        return (
+                            <React.Fragment key={`copy-${product.id}`}>
+                                <tr style={{backgroundColor: rowBg}}>
+                                    <td style={{border: '1px solid #cccccc', padding: '8px', fontWeight: 'bold'}}>{product.name}</td>
+                                    <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>{product.showUnlimited ? 'Unlimited' : product.band}</td>
+                                    <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>{formatCurrency(product.listPrice)}</td>
+                                    <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>{formatDiscount(product.discount)}</td>
+                                    {yearlyPrices.map((price, yearIndex) => (
+                                        <td key={yearIndex} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>
+                                            {product.waiveYear1 && yearIndex === 0 ? 'WAIVED' : formatCurrency(price)}
+                                        </td>
+                                    ))}
+                                    <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#fef3e2'}}>{formatCurrency(productTotal)}</td>
+                                </tr>
+                                {product.hasImplementation && (
+                                    <tr style={{backgroundColor: rowBg}}>
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', paddingLeft: '24px'}}>Implementation</td>
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>{formatCurrency(product.implementationCost)}</td>
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>{formatDiscount(product.implementationDiscount)}</td>
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', backgroundColor: '#fef3e2'}}>
+                                            {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
+                                        </td>
+                                        {Array.from({length: term - 1}, (_, i) => (
+                                            <td key={i} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
+                                        ))}
+                                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#fef3e2'}}>
+                                            {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                     <tr style={{backgroundColor: '#333333', color: 'white', fontWeight: 'bold'}}>
+                        <td style={{border: '1px solid #cccccc', padding: '8px'}}>TOTAL</td>
+                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
+                         <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>
+                           {formatCurrency(products.reduce((sum, p) => sum + p.listPrice + (p.hasImplementation ? p.implementationCost : 0), 0))}
+                         </td>
+                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>{averageDiscount}%</td>
+                        {Array.from({length: term}, (_, yearIndex) => {
+                            const yearTotal = products.reduce((sum, product) => {
+                                const yearlyPrice = calculateYearlyPrice(product.listPrice, yearIndex + 1, escalator);
+                                const discountedPrice = calculateDiscountedPrice(yearlyPrice, product.discount);
+                                let finalPrice = product.waiveYear1 && yearIndex === 0 ? 0 : discountedPrice;
+                                if (yearIndex === 0 && product.hasImplementation) {
+                                    const implCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                                    finalPrice += implCost;
+                                }
+                                return sum + finalPrice;
+                            }, 0);
+                            return <td key={yearIndex} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>{formatCurrency(yearTotal)}</td>;
+                        })}
+                        <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', backgroundColor: '#f57922'}}>{formatCurrency(totals.totalDiscountedPrice)}</td>
+                     </tr>
+                    </tbody>
+                </table>
+              </div>
+
+              {/* Date and Escalator Info Right Above Pricing Table */}
+              <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-gradient-to-r from-slate-100 to-blue-100 rounded-lg border border-slate-300">
+                  <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-slate-800">
+                          Valid through {formattedDate}
+                      </span>
+                  </div>
+                  <div className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">
+                      <span className="text-sm font-semibold text-slate-800">{escalator}% Annual Escalator</span>
+                  </div>
+              </div>
+
+              {/* Live Pricing Table */}
+              <div className="overflow-x-auto mb-4 rounded-xl border border-slate-200 shadow-lg">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr style={{backgroundColor: '#00aeef', color: 'white'}}>
+                      <th className="border border-slate-300 px-4 py-4 text-left font-bold text-sm">Solution</th>
+                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Band</th>
+                      <th className="border border-slate-300 px-4 py-4 text-right font-bold text-sm">List Price</th>
+                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Discount</th>
+                      {Array.from({length: term}, (_, i) => (
+                        <th key={i} className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Year {i + 1}</th>
+                      ))}
+                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm" style={{backgroundColor: '#f57922'}}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product, productIndex) => {
+                      const yearlyPrices = Array.from({length: term}, (_, i) => {
+                        const yearlyPrice = calculateYearlyPrice(product.listPrice, i + 1, escalator);
+                        return calculateDiscountedPrice(yearlyPrice, product.discount);
+                      });
+                      
+                      const productTotal = yearlyPrices.reduce((sum, price, i) => sum + (product.waiveYear1 && i === 0 ? 0 : price), 0);
+                      const rowColor = productIndex % 2 === 0 ? '#f8fafc' : 'white';
+                      
+                      return (
+                        <React.Fragment key={product.id}>
+                          <tr style={{backgroundColor: rowColor}} className="hover:bg-blue-50 transition-colors">
+                            <td className="border border-slate-300 px-4 py-3 font-semibold text-slate-800">{product.name}</td>
+                            <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{product.showUnlimited ? 'Unlimited' : product.band}</td>
+                            <td className="border border-slate-300 px-4 py-3 text-right text-slate-700">{formatCurrency(product.listPrice)}</td>
+                            <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{formatDiscount(product.discount)}</td>
+                            {yearlyPrices.map((price, yearIndex) => (
+                              <td key={yearIndex} className="border border-slate-300 px-4 py-3 text-right">
+                                {product.waiveYear1 && yearIndex === 0 ? (
+                                  <div>
+                                    <div style={{textDecoration: 'line-through', color: '#94a3b8'}}>{formatCurrency(price)}</div>
+                                    <div style={{color: '#dc2626', fontWeight: 'bold', fontSize: '0.875rem'}}>WAIVED</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-800 font-medium">{formatCurrency(price)}</span>
+                                )}
+                              </td>
+                            ))}
+                            <td className="border border-slate-300 px-4 py-3 text-right font-bold text-slate-800" style={{backgroundColor: '#fef3e2'}}>
+                              {formatCurrency(productTotal)}
+                            </td>
+                          </tr>
+                          
+                          {product.hasImplementation && (
+                            <tr style={{backgroundColor: rowColor}} className="hover:bg-blue-50 transition-colors">
+                              <td className="border border-slate-300 px-4 py-3 font-semibold pl-8 text-slate-600">Implementation</td>
+                              <td className="border border-slate-300 px-4 py-3 text-center text-slate-500">-</td>
+                              <td className="border border-slate-300 px-4 py-3 text-right text-slate-700">{formatCurrency(product.implementationCost)}</td>
+                              <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{formatDiscount(product.implementationDiscount)}</td>
+                              <td className="border border-slate-300 px-4 py-3 text-right" style={{backgroundColor: '#fef3e2'}}>
+                                {product.waiveImplementation ? (
+                                  <div>
+                                    <div style={{textDecoration: 'line-through', color: '#94a3b8'}}>{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</div>
+                                    <div style={{color: '#dc2626', fontWeight: 'bold', fontSize: '0.875rem'}}>WAIVED</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-800 font-medium">{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</span>
+                                )}
+                              </td>
+                              {Array.from({length: term - 1}, (_, i) => (
+                                <td key={i} className="border border-slate-300 px-4 py-3 text-center bg-slate-50">
+                                  <span className="text-slate-400">-</span>
+                                </td>
+                              ))}
+                              <td className="border border-slate-300 px-4 py-3 text-right font-bold text-slate-800" style={{backgroundColor: '#fef3e2'}}>
+                                {product.waiveImplementation ? (
+                                    'WAIVED'
+                                ) : (
+                                  formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                    
+                    {/* Total Row */}
+                    <tr style={{backgroundColor: '#1e293b', color: 'white'}} className="font-bold">
+                      <td className="border border-slate-500 px-4 py-4 text-lg">TOTAL</td>
+                      <td className="border border-slate-500 px-4 py-4 text-center">-</td>
+                      <td className="border border-slate-500 px-4 py-4 text-right">
+                        {formatCurrency(products.reduce((sum, p) => sum + p.listPrice + (p.hasImplementation ? p.implementationCost : 0), 0))}
+                      </td>
+                      <td className="border border-slate-500 px-4 py-4 text-center text-lg">{averageDiscount}%</td>
+                      {Array.from({length: term}, (_, yearIndex) => {
+                        const yearTotal = products.reduce((sum, product) => {
+                          const yearlyPrice = calculateYearlyPrice(product.listPrice, yearIndex + 1, escalator);
+                          const discountedPrice = calculateDiscountedPrice(yearlyPrice, product.discount);
+                          let finalPrice = product.waiveYear1 && yearIndex === 0 ? 0 : discountedPrice;
+                          
+                          if (yearIndex === 0 && product.hasImplementation) {
+                            const implCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                            finalPrice += implCost;
+                          }
+                          return sum + finalPrice;
+                        }, 0);
+                        
+                        return (
+                          <td key={yearIndex} className="border border-slate-500 px-4 py-4 text-right text-lg">
+                            {formatCurrency(yearTotal)}
+                          </td>
+                        );
+                      })}
+                      <td className="border border-slate-500 px-4 py-4 text-right text-xl" style={{backgroundColor: '#f57922'}}>
+                        {formatCurrency(totals.totalDiscountedPrice)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="text-sm text-slate-600 italic mb-8 text-center">
+                *Implementation can be spread over the term of the contract
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold text-blue-800">{formatCurrency(totals.totalDiscountedPrice)}</div>
+                      <div className="text-blue-600 font-medium">Total Investment</div>
+                    </div>
+                  </div>
+                  <div className="text-blue-700 text-sm">Total cost over {term}-year contract term</div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Calculator className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold text-green-800">{formatCurrency(totals.totalSavings)}</div>
+                      <div className="text-green-600 font-medium">Total Savings</div>
+                    </div>
+                  </div>
+                  <div className="text-green-700 text-sm">Compared to list price over contract term ({averageDiscount}% avg. discount)</div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end items-center pt-6 border-t border-slate-200">
+                <button 
+                  onClick={copyToPowerPoint} 
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all duration-200 text-white shadow-lg hover:shadow-xl hover:scale-105"
+                >
+                  <Copy size={18} />
+                  Copy to PowerPoint
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PricingGenerator;
