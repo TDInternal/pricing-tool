@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Trash2, Settings, Copy, Eye, EyeOff, Calculator, DollarSign, X, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Calculator, DollarSign, X, CheckCircle, Copy } from 'lucide-react';
 
 // To improve maintainability, product pricing and implementation cost data are moved outside the component.
 // This makes it easier to update pricing without touching the component logic.
@@ -13,7 +13,7 @@ const productPrices = {
   'Engage for ISSS': { '0 - 100': 3465, '101 - 200': 4904, '201 - 300': 6343, '301 - 400': 7782, '401 - 500': 9222, '501 - 600': 10661, '601 - 700': 12100, '701 - 800': 13539, '800 - 900': 14978, '901 - 1,000': 16418, '1,001 - 1,100': 18068, '1,101 - 1,250': 18480, '1,251 - 1,500': 19718, '1,501 - 2,000': 21368, '2,001 - 3,500': 22605, '3,501 - 6,000': 24668, '6,001 - 11,000+': 27968 },
   'Agreements': { all: 9500 },
   'Dashboards': { all: 5000 },
-  'PGI': { all: 1000 }
+  'Payment Gateway': { all: 1000 }
 };
 
 const implementationCosts = {
@@ -25,7 +25,7 @@ const implementationCosts = {
   'Enterprise Travel Registry': { all: 9000 },
   'Dashboards': { all: 5000 },
   'Agreements': { all: 6000 },
-  'PGI': { all: 1000 }
+  'Payment Gateway': { all: 1000 }
 };
 
 const availableProducts = Object.keys(productPrices);
@@ -48,7 +48,7 @@ const getImplementationCost = (productName, band) => {
 const Notification = ({ message, type, onDismiss }) => {
   if (!message) return null;
 
-  const baseStyle = "fixed top-5 right-5 flex items-center px-6 py-3 rounded-lg shadow-lg text-white transition-all duration-300 transform animate-slide-in-right";
+  const baseStyle = "fixed top-5 right-5 flex items-center px-6 py-3 rounded-lg shadow-lg text-white transition-all duration-300 transform animate-slide-in-right z-50";
   const typeStyles = {
     success: "bg-green-500",
     error: "bg-red-500",
@@ -66,7 +66,7 @@ const Notification = ({ message, type, onDismiss }) => {
 };
 
 
-const PricingGenerator = () => {
+const App = () => {
   const [products, setProducts] = useState([
     { 
       id: 1,
@@ -84,8 +84,15 @@ const PricingGenerator = () => {
   ]);
   const [term, setTerm] = useState(5);
   const [escalator, setEscalator] = useState(3);
-  const [validThrough, setValidThrough] = useState('2025-12-31');
-  const [showConfig, setShowConfig] = useState(false);
+  
+  // Set default valid through date to be end of next month
+  const getNextMonthEndDate = () => {
+      const date = new Date();
+      date.setMonth(date.getMonth() + 2, 0);
+      return date.toISOString().split('T')[0];
+  }
+
+  const [validThrough, setValidThrough] = useState(getNextMonthEndDate());
   const [notification, setNotification] = useState({ message: '', type: 'success' });
 
   useEffect(() => {
@@ -149,7 +156,7 @@ const PricingGenerator = () => {
     } catch (err) {
       showNotification('Copy failed. An error occurred.', 'error');
     }
-  }, []);
+  }, [formattedDate, escalator, term, products]); // Add all dependencies that affect the copied content
 
   const updateProduct = (index, field, value) => {
     const newProducts = [...products];
@@ -174,12 +181,12 @@ const PricingGenerator = () => {
     setProducts([...products, { 
       id: Date.now(),
       name: 'Study Abroad', 
-      band: '201 - 300', 
-      listPrice: 15044, 
+      band: '0 - 100', 
+      listPrice: getProductPrice('Study Abroad', '0 - 100'), 
       discount: { type: 'percentage', value: 0 }, 
       hasImplementation: false,
       showUnlimited: false,
-      implementationCost: 12000,
+      implementationCost: getImplementationCost('Study Abroad', '0 - 100'),
       implementationDiscount: { type: 'percentage', value: 0 },
       waiveYear1: false,
       waiveImplementation: false
@@ -278,17 +285,17 @@ const PricingGenerator = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-slate-50 font-sans">
       <Notification message={notification.message} type={notification.type} onDismiss={() => setNotification({ message: '', type: 'success' })} />
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Calculator className="w-8 h-8" />
-                <h1 className="text-2xl font-bold">Terra Dotta Pricing Generator</h1>
+                <h1 className="text-xl sm:text-2xl font-bold">Terra Dotta Pricing Generator</h1>
               </div>
               <div className="flex items-center gap-3">
                 <button 
@@ -298,82 +305,74 @@ const PricingGenerator = () => {
                   <Plus size={18} />
                   Add Product
                 </button>
-                <button 
-                  onClick={() => setShowConfig(!showConfig)} 
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:scale-105"
-                >
-                  {showConfig ? <EyeOff size={18} /> : <Eye size={18} />}
-                  {showConfig ? 'Hide' : 'Show'} Settings
-                </button>
               </div>
             </div>
           </div>
 
           {/* Settings Panel */}
-          {showConfig && (
-            <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700">Contract Term</label>
-                  <select 
-                    value={term} 
-                    onChange={(e) => setTerm(parseInt(e.target.value))} 
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    {[1,2,3,4,5,6,7,8,9,10].map(y => (
-                      <option key={y} value={y}>{y} Year{y > 1 ? 's' : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700">Annual Escalator (%)</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    max="20" 
-                    value={escalator} 
-                    onChange={(e) => setEscalator(parseInt(e.target.value) || 0)} 
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700">Valid Through</label>
-                  <input 
-                    type="date" 
-                    value={validThrough} 
-                    onChange={(e) => setValidThrough(e.target.value)} 
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                  <div className="text-sm text-slate-600">
-                    Will display as: {formattedDate}
-                  </div>
+          <div className="border-b border-slate-200 bg-slate-50/50 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Contract Term</label>
+                <select 
+                  value={term} 
+                  onChange={(e) => setTerm(parseInt(e.target.value))} 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(y => (
+                    <option key={y} value={y}>{y} Year{y > 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Annual Escalator (%)</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  max="20" 
+                  value={escalator} 
+                  onChange={(e) => setEscalator(parseInt(e.target.value) || 0)} 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Valid Through</label>
+                <input 
+                  type="date" 
+                  value={validThrough} 
+                  onChange={(e) => setValidThrough(e.target.value)} 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <div className="text-sm text-slate-600">
+                  Will display as: {formattedDate}
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="bg-white">
               
-              <h2 className="text-3xl font-bold text-center mb-8 text-slate-900 bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                Terra Dotta Pricing
+              <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 text-slate-800">
+                Product & Discount Configuration
               </h2>
 
               {/* Product Configuration Cards */}
               <div className="space-y-6 mb-10">
                 {products.map((product, index) => (
-                  <div key={product.id} className="border border-slate-200 rounded-xl p-6 bg-gradient-to-r from-white to-slate-50 shadow-sm hover:shadow-md transition-shadow">
+                  <div key={product.id} className="border border-slate-200 rounded-xl p-5 sm:p-6 bg-slate-50/30 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
                           {index + 1}
                         </div>
-                        Product Configuration
+                        Product Details
                       </h3>
                       {products.length > 1 && (
                         <button 
                           onClick={() => removeProduct(index)} 
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-100 p-2 rounded-lg transition-colors"
+                          aria-label="Remove product"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -517,7 +516,7 @@ const PricingGenerator = () => {
               </div>
 
               {/* This is the invisible table that gets copied */}
-              <div id="pricing-table-for-copy" style={{position: 'absolute', left: '-9999px', top: 'auto'}}>
+              <div id="pricing-table-for-copy" style={{position: 'absolute', left: '-9999px', top: 'auto', width: '800px'}}>
                 <table style={{borderCollapse: 'collapse', width: '100%', fontFamily: 'sans-serif', fontSize: '11pt'}}>
                     <thead>
                         <tr>
@@ -578,7 +577,7 @@ const PricingGenerator = () => {
                             </React.Fragment>
                         );
                     })}
-                     <tr style={{backgroundColor: '#333333', color: 'white', fontWeight: 'bold'}}>
+                       <tr style={{backgroundColor: '#333333', color: 'white', fontWeight: 'bold'}}>
                         <td style={{border: '1px solid #cccccc', padding: '8px'}}>TOTAL</td>
                         <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
                          <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>
@@ -599,13 +598,13 @@ const PricingGenerator = () => {
                             return <td key={yearIndex} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>{formatCurrency(yearTotal)}</td>;
                         })}
                         <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', backgroundColor: '#f57922'}}>{formatCurrency(totals.totalDiscountedPrice)}</td>
-                     </tr>
+                       </tr>
                     </tbody>
                 </table>
               </div>
 
               {/* Date and Escalator Info Right Above Pricing Table */}
-              <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-gradient-to-r from-slate-100 to-blue-100 rounded-lg border border-slate-300">
+              <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-slate-100 rounded-lg border border-slate-200">
                   <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-semibold text-slate-800">
@@ -619,17 +618,17 @@ const PricingGenerator = () => {
 
               {/* Live Pricing Table */}
               <div className="overflow-x-auto mb-4 rounded-xl border border-slate-200 shadow-lg">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse min-w-[800px]">
                   <thead>
-                    <tr style={{backgroundColor: '#00aeef', color: 'white'}}>
-                      <th className="border border-slate-300 px-4 py-4 text-left font-bold text-sm">Solution</th>
-                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Band</th>
-                      <th className="border border-slate-300 px-4 py-4 text-right font-bold text-sm">List Price</th>
-                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Discount</th>
+                    <tr style={{backgroundColor: '#00aeef'}} className="text-white">
+                      <th className="border-r border-blue-400 px-4 py-4 text-left font-bold text-sm">Solution</th>
+                      <th className="border-r border-blue-400 px-4 py-4 text-center font-bold text-sm">Band</th>
+                      <th className="border-r border-blue-400 px-4 py-4 text-right font-bold text-sm">List Price</th>
+                      <th className="border-r border-blue-400 px-4 py-4 text-center font-bold text-sm">Discount</th>
                       {Array.from({length: term}, (_, i) => (
-                        <th key={i} className="border border-slate-300 px-4 py-4 text-center font-bold text-sm">Year {i + 1}</th>
+                        <th key={i} className="border-r border-blue-400 px-4 py-4 text-center font-bold text-sm">Year {i + 1}</th>
                       ))}
-                      <th className="border border-slate-300 px-4 py-4 text-center font-bold text-sm" style={{backgroundColor: '#f57922'}}>Total</th>
+                      <th className="px-4 py-4 text-center font-bold text-sm" style={{backgroundColor: '#f57922'}}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -640,59 +639,55 @@ const PricingGenerator = () => {
                       });
                       
                       const productTotal = yearlyPrices.reduce((sum, price, i) => sum + (product.waiveYear1 && i === 0 ? 0 : price), 0);
-                      const rowColor = productIndex % 2 === 0 ? '#f8fafc' : 'white';
+                      const rowColor = productIndex % 2 === 0 ? 'bg-slate-50/70' : 'bg-white';
                       
                       return (
                         <React.Fragment key={product.id}>
-                          <tr style={{backgroundColor: rowColor}} className="hover:bg-blue-50 transition-colors">
-                            <td className="border border-slate-300 px-4 py-3 font-semibold text-slate-800">{product.name}</td>
-                            <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{product.showUnlimited ? 'Unlimited' : product.band}</td>
-                            <td className="border border-slate-300 px-4 py-3 text-right text-slate-700">{formatCurrency(product.listPrice)}</td>
-                            <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{formatDiscount(product.discount)}</td>
+                          <tr className={`${rowColor} hover:bg-blue-50 transition-colors`}>
+                            <td className="border border-slate-200 px-4 py-3 font-semibold text-slate-800">{product.name}</td>
+                            <td className="border border-slate-200 px-4 py-3 text-center text-slate-700">{product.showUnlimited ? 'Unlimited' : product.band}</td>
+                            <td className="border border-slate-200 px-4 py-3 text-right text-slate-700">{formatCurrency(product.listPrice)}</td>
+                            <td className="border border-slate-200 px-4 py-3 text-center text-slate-700">{formatDiscount(product.discount)}</td>
                             {yearlyPrices.map((price, yearIndex) => (
-                              <td key={yearIndex} className="border border-slate-300 px-4 py-3 text-right">
+                              <td key={yearIndex} className="border border-slate-200 px-4 py-3 text-right">
                                 {product.waiveYear1 && yearIndex === 0 ? (
                                   <div>
-                                    <div style={{textDecoration: 'line-through', color: '#94a3b8'}}>{formatCurrency(price)}</div>
-                                    <div style={{color: '#dc2626', fontWeight: 'bold', fontSize: '0.875rem'}}>WAIVED</div>
+                                    <div className="line-through text-slate-400">{formatCurrency(price)}</div>
+                                    <div className="text-red-600 font-bold text-xs">WAIVED</div>
                                   </div>
                                 ) : (
                                   <span className="text-slate-800 font-medium">{formatCurrency(price)}</span>
                                 )}
                               </td>
                             ))}
-                            <td className="border border-slate-300 px-4 py-3 text-right font-bold text-slate-800" style={{backgroundColor: '#fef3e2'}}>
+                            <td className="border border-slate-200 px-4 py-3 text-right font-bold text-slate-800 bg-orange-50">
                               {formatCurrency(productTotal)}
                             </td>
                           </tr>
                           
                           {product.hasImplementation && (
-                            <tr style={{backgroundColor: rowColor}} className="hover:bg-blue-50 transition-colors">
-                              <td className="border border-slate-300 px-4 py-3 font-semibold pl-8 text-slate-600">Implementation</td>
-                              <td className="border border-slate-300 px-4 py-3 text-center text-slate-500">-</td>
-                              <td className="border border-slate-300 px-4 py-3 text-right text-slate-700">{formatCurrency(product.implementationCost)}</td>
-                              <td className="border border-slate-300 px-4 py-3 text-center text-slate-700">{formatDiscount(product.implementationDiscount)}</td>
-                              <td className="border border-slate-300 px-4 py-3 text-right" style={{backgroundColor: '#fef3e2'}}>
+                            <tr className={`${rowColor} hover:bg-blue-50 transition-colors`}>
+                              <td className="border border-slate-200 px-4 py-3 font-medium pl-8 text-slate-600">Implementation</td>
+                              <td className="border border-slate-200 px-4 py-3 text-center text-slate-500">-</td>
+                              <td className="border border-slate-200 px-4 py-3 text-right text-slate-700">{formatCurrency(product.implementationCost)}</td>
+                              <td className="border border-slate-200 px-4 py-3 text-center text-slate-700">{formatDiscount(product.implementationDiscount)}</td>
+                              <td className="border border-slate-200 px-4 py-3 text-right bg-orange-50">
                                 {product.waiveImplementation ? (
                                   <div>
-                                    <div style={{textDecoration: 'line-through', color: '#94a3b8'}}>{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</div>
-                                    <div style={{color: '#dc2626', fontWeight: 'bold', fontSize: '0.875rem'}}>WAIVED</div>
+                                    <div className="line-through text-slate-400">{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</div>
+                                    <div className="text-red-600 font-bold text-xs">WAIVED</div>
                                   </div>
                                 ) : (
                                   <span className="text-slate-800 font-medium">{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</span>
                                 )}
                               </td>
                               {Array.from({length: term - 1}, (_, i) => (
-                                <td key={i} className="border border-slate-300 px-4 py-3 text-center bg-slate-50">
+                                <td key={i} className="border border-slate-200 px-4 py-3 text-center bg-slate-100/50">
                                   <span className="text-slate-400">-</span>
                                 </td>
                               ))}
-                              <td className="border border-slate-300 px-4 py-3 text-right font-bold text-slate-800" style={{backgroundColor: '#fef3e2'}}>
-                                {product.waiveImplementation ? (
-                                    'WAIVED'
-                                ) : (
-                                  formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))
-                                )}
+                              <td className="border border-slate-200 px-4 py-3 text-right font-bold text-slate-800 bg-orange-50">
+                                {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
                               </td>
                             </tr>
                           )}
@@ -701,7 +696,7 @@ const PricingGenerator = () => {
                     })}
                     
                     {/* Total Row */}
-                    <tr style={{backgroundColor: '#1e293b', color: 'white'}} className="font-bold">
+                    <tr className="bg-slate-800 text-white font-bold">
                       <td className="border border-slate-500 px-4 py-4 text-lg">TOTAL</td>
                       <td className="border border-slate-500 px-4 py-4 text-center">-</td>
                       <td className="border border-slate-500 px-4 py-4 text-right">
@@ -735,13 +730,13 @@ const PricingGenerator = () => {
                 </table>
               </div>
 
-              <div className="text-sm text-slate-600 italic mb-8 text-center">
+              <div className="text-sm text-slate-500 italic mb-8 text-center">
                 *Implementation can be spread over the term of the contract
               </div>
 
               {/* Summary Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center gap-4 mb-3">
                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                       <DollarSign className="w-6 h-6 text-white" />
@@ -754,7 +749,7 @@ const PricingGenerator = () => {
                   <div className="text-blue-700 text-sm">Total cost over {term}-year contract term</div>
                 </div>
                 
-                <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center gap-4 mb-3">
                     <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                       <Calculator className="w-6 h-6 text-white" />
@@ -769,10 +764,10 @@ const PricingGenerator = () => {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end items-center pt-6 border-t border-slate-200">
+              <div className="flex justify-center sm:justify-end items-center pt-6 border-t border-slate-200">
                 <button 
                   onClick={copyToPowerPoint} 
-                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all duration-200 text-white shadow-lg hover:shadow-xl hover:scale-105"
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all duration-200 text-white shadow-lg hover:shadow-xl hover:scale-105 w-full sm:w-auto justify-center"
                 >
                   <Copy size={18} />
                   Copy to PowerPoint
@@ -786,4 +781,4 @@ const PricingGenerator = () => {
   );
 };
 
-export default PricingGenerator;
+export default App;
