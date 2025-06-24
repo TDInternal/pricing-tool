@@ -134,7 +134,7 @@
             band: '201 - 300', 
             listPrice: 15044, 
             discount: { type: 'percentage', value: 20 }, 
-            hasImplementation: true,
+            hasImplementation: false,
             showUnlimited: false,
             implementationCost: 12000,
             implementationDiscount: { type: 'percentage', value: 10 },
@@ -549,7 +549,9 @@
                                       />
                                       <span className="text-sm font-medium text-slate-700">Include Implementation</span>
                                   </label>
-                                  <label className="flex items-center cursor-pointer space-x-2">
+                              </div>
+                              <div className="mt-2">
+                                <label className="flex items-center cursor-pointer space-x-2">
                                       <input 
                                       type="checkbox" 
                                       checked={product.isCurrentSolution} 
@@ -557,7 +559,7 @@
                                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                                       />
                                       <span className="text-sm font-medium text-slate-700">Currently Used Solution</span>
-                                  </label>
+                                </label>
                               </div>
                           </div>
 
@@ -909,3 +911,13 @@
     </script>
 </body>
 </html>
+" and am asking a query about/based on this code below.
+Instructions to follow:
+  * Don't output/edit the document if the query is Direct/Simple. For example, if the query asks for a simple explanation, output a direct answer.
+  * Make sure to **edit** the document if the query shows the intent of editing the document, in which case output the entire edited document, **not just that section or the edits**.
+    * Don't output the same document/empty document and say that you have edited it.
+    * Don't change unrelated code in the document.
+  * Don't output  and  in your final response.
+  * Any references like "this" or "selected code" refers to the code between  and  tags.
+  * Just acknowledge my request in the introduction.
+  * Make sure to refer to the document as "Canvas" in your respon
