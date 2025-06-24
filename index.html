@@ -89,6 +89,23 @@
       
       // --- React Components ---
 
+      const Modal = ({ isOpen, onClose, onConfirm, title, children }) => {
+        if (!isOpen) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                    <h2 className="text-lg font-bold mb-4">{title}</h2>
+                    <div className="mb-6">{children}</div>
+                    <div className="flex justify-end gap-4">
+                        <button onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 transition-colors">No</button>
+                        <button onClick={onConfirm} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">Yes</button>
+                    </div>
+                </div>
+            </div>
+        );
+      };
+
       const Notification = ({ message, type, onDismiss }) => {
         if (!message) return null;
 
@@ -124,10 +141,12 @@
             waiveYear1: false,
             waiveImplementation: false,
             isCurrentSolution: false,
+            spreadImplementation: false,
           }
         ]);
         const [term, setTerm] = useState(5);
         const [escalator, setEscalator] = useState(3);
+        const [modal, setModal] = useState({ isOpen: false, productIndex: null });
         
         const getNextMonthEndDate = () => {
             const date = new Date();
@@ -200,6 +219,31 @@
           }
         }, [formattedDate, escalator, term, products]);
 
+        const handleImplementationChange = (index, isChecked) => {
+            if (isChecked) {
+                setModal({ isOpen: true, productIndex: index });
+            } else {
+                const newProducts = [...products];
+                newProducts[index] = {
+                    ...newProducts[index],
+                    hasImplementation: false,
+                    spreadImplementation: false,
+                };
+                setProducts(newProducts);
+            }
+        };
+        
+        const confirmSpread = (shouldSpread) => {
+            const { productIndex } = modal;
+            if (productIndex !== null) {
+                const newProducts = [...products];
+                newProducts[productIndex].hasImplementation = true;
+                newProducts[productIndex].spreadImplementation = shouldSpread;
+                setProducts(newProducts);
+            }
+            setModal({ isOpen: false, productIndex: null });
+        };
+
         const updateProduct = (index, field, value) => {
           const newProducts = [...products];
           const productToUpdate = { ...newProducts[index] };
@@ -233,6 +277,7 @@
             waiveYear1: false,
             waiveImplementation: false,
             isCurrentSolution: false,
+            spreadImplementation: false,
           }]);
         };
 
@@ -329,6 +374,13 @@
 
         return (
           <div className="min-h-screen bg-slate-50 font-sans">
+            <Modal
+                isOpen={modal.isOpen}
+                onClose={() => confirmSpread(false)}
+                onConfirm={() => confirmSpread(true)}
+                title="Implementation Cost">
+                <p>Spread Implementation over the Term?</p>
+            </Modal>
             <Notification message={notification.message} type={notification.type} onDismiss={() => setNotification({ message: '', type: 'success' })} />
             <div className="max-w-7xl mx-auto p-4 sm:p-6">
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
@@ -492,7 +544,7 @@
                                       <input 
                                       type="checkbox" 
                                       checked={product.hasImplementation} 
-                                      onChange={(e) => updateProduct(index, 'hasImplementation', e.target.checked)} 
+                                      onChange={(e) => handleImplementationChange(index, e.target.checked)}
                                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                                       />
                                       <span className="text-sm font-medium text-slate-700">Include Implementation</span>
@@ -504,7 +556,7 @@
                                       onChange={(e) => updateProduct(index, 'isCurrentSolution', e.target.checked)} 
                                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                                       />
-                                      <span className="text-sm font-medium text-slate-700">Current Used Solution</span>
+                                      <span className="text-sm font-medium text-slate-700">Currently Used Solution</span>
                                   </label>
                               </div>
                           </div>
@@ -607,12 +659,22 @@
                                                 <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
                                                 <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>{formatCurrency(product.implementationCost)}</td>
                                                 <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>{formatDiscount(product.implementationDiscount)}</td>
-                                                <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', backgroundColor: '#fef3e2'}}>
-                                                    {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
-                                                </td>
-                                                {Array.from({length: term - 1}, (_, i) => (
-                                                    <td key={i} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'center'}}>-</td>
-                                                ))}
+                                                {Array.from({length: term}, (_, yearIndex) => {
+                                                    const discountedImplCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                                                    let displayValue = '-';
+                                                    if(discountedImplCost > 0) {
+                                                        if (product.spreadImplementation) {
+                                                            displayValue = formatCurrency(Math.round(discountedImplCost / term));
+                                                        } else if (yearIndex === 0) {
+                                                            displayValue = formatCurrency(discountedImplCost);
+                                                        }
+                                                    }
+                                                    return (
+                                                        <td key={yearIndex} style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right'}}>
+                                                            {product.waiveImplementation ? 'WAIVED' : displayValue}
+                                                        </td>
+                                                    );
+                                                })}
                                                 <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#fef3e2'}}>
                                                     {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
                                                 </td>
@@ -633,9 +695,13 @@
                                         const yearlyPrice = calculateYearlyPrice(product.listPrice, yearIndex + 1, escalator);
                                         const discountedPrice = calculateDiscountedPrice(yearlyPrice, product.discount);
                                         let finalPrice = product.waiveYear1 && yearIndex === 0 ? 0 : discountedPrice;
-                                        if (yearIndex === 0 && product.hasImplementation) {
-                                            const implCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
-                                            finalPrice += implCost;
+                                        if (product.hasImplementation && !product.waiveImplementation) {
+                                            const implCost = calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                                            if (product.spreadImplementation) {
+                                                finalPrice += Math.round(implCost / term);
+                                            } else if (yearIndex === 0) {
+                                                finalPrice += implCost;
+                                            }
                                         }
                                         return sum + finalPrice;
                                     }, 0);
@@ -646,7 +712,7 @@
                                {hasCurrentSolution && (
                                 <tr>
                                     <td colSpan={4 + term + 1} style={{padding: '4px 8px', fontSize: '9pt', fontStyle: 'italic'}}>
-                                        * Current Used Solution
+                                        * Currently Used Solution
                                     </td>
                                 </tr>
                                )}
@@ -722,21 +788,22 @@
                                     <td className="border border-slate-200 px-4 py-3 text-center text-slate-500">-</td>
                                     <td className="border border-slate-200 px-4 py-3 text-right text-slate-700">{formatCurrency(product.implementationCost)}</td>
                                     <td className="border border-slate-200 px-4 py-3 text-center text-slate-700">{formatDiscount(product.implementationDiscount)}</td>
-                                    <td className="border border-slate-200 px-4 py-3 text-right bg-orange-50">
-                                      {product.waiveImplementation ? (
-                                        <div>
-                                          <div className="line-through text-slate-400">{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</div>
-                                          <div className="text-red-600 font-bold text-xs">WAIVED</div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-slate-800 font-medium">{formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}</span>
-                                      )}
-                                    </td>
-                                    {Array.from({length: term - 1}, (_, i) => (
-                                      <td key={i} className="border border-slate-200 px-4 py-3 text-center bg-slate-100/50">
-                                        <span className="text-slate-400">-</span>
-                                      </td>
-                                    ))}
+                                    {Array.from({length: term}, (_, yearIndex) => {
+                                        const discountedImplCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                                        let displayValue = '-';
+                                        if(discountedImplCost > 0) {
+                                            if (product.spreadImplementation) {
+                                                displayValue = formatCurrency(Math.round(discountedImplCost / term));
+                                            } else if (yearIndex === 0) {
+                                                displayValue = formatCurrency(discountedImplCost);
+                                            }
+                                        }
+                                        return (
+                                            <td key={yearIndex} className="border border-slate-200 px-4 py-3 text-right">
+                                                {product.waiveImplementation ? <div className="text-red-600 font-bold text-xs">WAIVED</div> : <span>{displayValue}</span>}
+                                            </td>
+                                        );
+                                    })}
                                     <td className="border border-slate-200 px-4 py-3 text-right font-bold text-slate-800 bg-orange-50">
                                       {product.waiveImplementation ? 'WAIVED' : formatCurrency(calculateDiscountedPrice(product.implementationCost, product.implementationDiscount))}
                                     </td>
@@ -759,9 +826,13 @@
                                 const discountedPrice = calculateDiscountedPrice(yearlyPrice, product.discount);
                                 let finalPrice = product.waiveYear1 && yearIndex === 0 ? 0 : discountedPrice;
                                 
-                                if (yearIndex === 0 && product.hasImplementation) {
-                                  const implCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
-                                  finalPrice += implCost;
+                                if (product.hasImplementation && !product.waiveImplementation) {
+                                    const implCost = calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
+                                    if (product.spreadImplementation) {
+                                        finalPrice += Math.round(implCost / term);
+                                    } else if (yearIndex === 0) {
+                                        finalPrice += implCost;
+                                    }
                                 }
                                 return sum + finalPrice;
                               }, 0);
@@ -781,7 +852,7 @@
                     </div>
 
                     <div className="text-sm text-slate-500 italic mb-8 text-center">
-                      {hasCurrentSolution && <span>* Current Used Solution<br/></span>}
+                      {hasCurrentSolution && <span>* Currently Used Solution<br/></span>}
                       *Implementation can be spread over the term of the contract
                     </div>
 
