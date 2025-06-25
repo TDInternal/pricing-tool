@@ -646,8 +646,6 @@
                                     return calculateDiscountedPrice(yearlyPrice, product.discount);
                                 });
                                 const productSubscriptionTotal = yearlyPrices.reduce((sum, price, i) => sum + (product.waiveYear1 && i === 0 ? 0 : price), 0);
-                                const implementationFinalCost = product.hasImplementation ? (product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount)) : 0;
-                                const combinedProductTotal = productSubscriptionTotal + implementationFinalCost;
                                 const rowBg = product.isCurrentSolution ? '#e5e7eb' : (productIndex % 2 === 0 ? '#f8f8f8' : '#ffffff');
                                 return (
                                     <React.Fragment key={`copy-${product.id}`}>
@@ -661,7 +659,7 @@
                                                     {product.waiveYear1 && yearIndex === 0 ? 'WAIVED' : formatCurrency(price)}
                                                 </td>
                                             ))}
-                                            <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#fef3e2'}}>{formatCurrency(combinedProductTotal)}</td>
+                                            <td style={{border: '1px solid #cccccc', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#fef3e2'}}>{formatCurrency(productSubscriptionTotal)}</td>
                                         </tr>
                                         {product.hasImplementation && (
                                             <tr style={{backgroundColor: rowBg}}>
@@ -764,8 +762,6 @@
                             });
                             
                             const productSubscriptionTotal = yearlyPrices.reduce((sum, price, i) => sum + (product.waiveYear1 && i === 0 ? 0 : price), 0);
-                            const implementationFinalCost = product.hasImplementation ? (product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount)) : 0;
-                            const combinedProductTotal = productSubscriptionTotal + implementationFinalCost;
                             const rowColor = product.isCurrentSolution ? 'bg-slate-200' : (productIndex % 2 === 0 ? 'bg-slate-50/70' : 'bg-white');
                             
                             return (
@@ -788,7 +784,7 @@
                                     </td>
                                   ))}
                                   <td className="border border-slate-200 px-4 py-3 text-right font-bold text-slate-800 bg-orange-50">
-                                    {formatCurrency(combinedProductTotal)}
+                                    {formatCurrency(productSubscriptionTotal)}
                                   </td>
                                 </tr>
                                 
