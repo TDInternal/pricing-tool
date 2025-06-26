@@ -76,6 +76,8 @@
         '701 - 800', '800 - 900', '901 - 1,000', '1,001 - 1,100', '1,101 - 1,250', '1,251 - 1,500', 
         '1,501 - 2,000', '2,001 - 3,500', '3,501 - 6,000', '6,001 - 11,000+', '-'
       ];
+      
+      const STANDARD_ESCALATOR = 5;
 
       const getProductPrice = (productName, band) => {
           if (productPrices[productName]?.all) return productPrices[productName].all;
@@ -311,27 +313,28 @@
         };
 
         const calculateTotalSavings = useCallback(() => {
-          let totalListPriceWithEscalator = 0;
+          let totalStandardListPrice = 0;
           let totalDiscountedPrice = 0;
 
           products.forEach(product => {
             for (let year = 1; year <= term; year++) {
-              const yearlyListPrice = calculateYearlyPrice(product.listPrice, year, escalator);
-              totalListPriceWithEscalator += yearlyListPrice;
-              
-              const discountedPrice = calculateDiscountedPrice(yearlyListPrice, product.discount);
+              const standardYearlyListPrice = calculateYearlyPrice(product.listPrice, year, STANDARD_ESCALATOR);
+              totalStandardListPrice += standardYearlyListPrice;
+
+              const yearlyListPriceWithActualEscalator = calculateYearlyPrice(product.listPrice, year, escalator);
+              const discountedPrice = calculateDiscountedPrice(yearlyListPriceWithActualEscalator, product.discount);
               const finalPrice = product.waiveYear1 && year === 1 ? 0 : discountedPrice;
               totalDiscountedPrice += finalPrice;
             }
 
             if (product.hasImplementation) {
-              totalListPriceWithEscalator += product.implementationCost;
+              totalStandardListPrice += product.implementationCost;
               const implementationFinalCost = product.waiveImplementation ? 0 : calculateDiscountedPrice(product.implementationCost, product.implementationDiscount);
               totalDiscountedPrice += implementationFinalCost;
             }
           });
 
-          return { totalListPriceWithEscalator, totalDiscountedPrice, totalSavings: totalListPriceWithEscalator - totalDiscountedPrice };
+          return { totalStandardListPrice, totalDiscountedPrice, totalSavings: totalStandardListPrice - totalDiscountedPrice };
         }, [products, term, escalator]);
 
         const calculateAverageDiscount = useCallback(() => {
@@ -626,6 +629,7 @@
                                 <tr>
                                     <td colSpan={4 + term + 1} style={{padding: '8px', backgroundColor: '#f0f0f0', border: '1px solid #cccccc', fontWeight: 'bold'}}>
                                         Valid through {formattedDate} with a {escalator}% Annual Escalator
+                                        {escalator < STANDARD_ESCALATOR && <span style={{fontWeight: 'normal', fontStyle: 'italic'}}> (Standard is {STANDARD_ESCALATOR}%)</span>}
                                     </td>
                                 </tr>
                                 <tr style={{backgroundColor: '#00aeef', color: 'white', fontWeight: 'bold', textAlign: 'center'}}>
@@ -735,8 +739,11 @@
                                 Valid through {formattedDate}
                             </span>
                         </div>
-                        <div className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">
+                        <div className="text-center">
                             <span className="text-sm font-semibold text-slate-800">{escalator}% Annual Escalator</span>
+                            {escalator < STANDARD_ESCALATOR && (
+                                <div className="text-xs text-slate-500 italic">Standard is {STANDARD_ESCALATOR}%</div>
+                            )}
                         </div>
                     </div>
 
@@ -886,7 +893,7 @@
                             <div className="text-green-600 font-medium">Total Savings</div>
                           </div>
                         </div>
-                        <div className="text-green-700 text-sm">Compared to list price over contract term ({averageDiscount}% avg. discount)</div>
+                        <div className="text-green-700 text-sm">Compared to list price over contract term ({averageDiscount}% avg. discount) with a {STANDARD_ESCALATOR}% annual escalator.</div>
                       </div>
                     </div>
 
@@ -914,4 +921,4 @@
 
     </script>
 </body>
-</ht
+</html>
